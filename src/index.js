@@ -37,11 +37,17 @@ async function uploadGif(filePath) {
     const command = new PutObjectCommand(params);
     const data = await s3.send(command);
     
-    //* El comando PutObjectCommand no retorna directamente la URL del objeto
-    //* Puedes construir la URL manualmente si tu bucket es público:
-    const url = `https://${bucketAWS}.s3.${regionAWS}.amazonaws.com/${params.Key}`;
-    
-    console.log('Termino el proceso:', {...data, fileName, url});
+    if(data['$metadata']?.httpStatusCode === 200) {
+      //* El comando PutObjectCommand no retorna directamente la URL del objeto
+      //* Puedes construir la URL manualmente si tu bucket es público:
+      const url = `https://${bucketAWS}.s3.${regionAWS}.amazonaws.com/${params.Key}`;
+      console.log('data: ', {...data, fileName, url});
+
+      //Eliminar el archivo
+      await moveFile(filePath)
+    }
+
+    console.log('Termino el proceso!')
   } catch (error) {
     console.error('Error al subir el archivo:', error);
   }
@@ -68,9 +74,25 @@ async function uploadGifsFromFolder(folderPath) {
         console.error('Error al leer la carpeta:', error);
     }
 }
+
+async function moveFile(filePath) {
+  try {
+    const fileName = path.basename(filePath);
+    const uploadFolderPath = path.join(__dirname, '../files-uploaded'); //
+
+    // Crea la carpeta si no existe
+    await fs.mkdir(uploadFolderPath, { recursive: true });
+
+    const newFilePath = path.join(uploadFolderPath, fileName);
+    await fs.rename(filePath, newFilePath); // Mueve el archivo
+
+  } catch (error) {
+    console.error('Error al mover el archivo:', error);
+  }
+}
   
 // La ruta de la carpeta se puede pasar como argumento.
-const folderPath = process.argv[2] || './GIFS';
+const folderPath = process.argv[2] || './gifs';
 uploadGifsFromFolder(folderPath);
 
 // const filePath = process.argv[2];
