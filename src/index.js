@@ -3,34 +3,47 @@ const path = require('path');
 require('dotenv').config();
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 
-
-const keyIdAWS      = process.env.AWS_ACCESS_KEY_ID;
-const regionAWS     = process.env.AWS_REGION;
-const secretKeyAWS  = process.env.AWS_SECRET_ACCESS_KEY;
-const bucketAWS     = process.env.S3_BUCKET_NAME;
-const bucketFolderAWS   = process.env.S3_BUCKET_FOLDER || '/';
+const config_aws = {
+    keyId        : process.env.AWS_ACCESS_KEY_ID,
+    region       : process.env.AWS_REGION,
+    secretKey    : process.env.AWS_SECRET_ACCESS_KEY,
+    bucket       : process.env.S3_BUCKET_NAME,
+    bucketFolder : process.env.S3_BUCKET_FOLDER,
+}
+const fileTypes = {
+    svg: {
+      contentType: 'image/svg+xml',
+      extension: '.svg'
+    },
+    gif: {
+      contentType: 'image/gif',
+      extension: '.gif'
+    }
+}
 
 //* Configura el cliente S3 con la región correspondiente
 const s3 = new S3Client({
-    region: regionAWS,
+    region: config_aws.region,
     credentials: {
-        accessKeyId: keyIdAWS,
-        secretAccessKey: secretKeyAWS
+        accessKeyId: config_aws.keyId,
+        secretAccessKey: config_aws.secretKey
     }
 });
 
-async function uploadGif(filePath) {
+async function uploadFile(filePath, contentType) {
   try {
-    //* Lee el archivo GIF
+    const {region, bucket, bucketFolder} = config_aws;
+
+    //* Lee el archivo
     const fileData = await fs.readFile(filePath);
     const fileName = path.basename(filePath);
 
     //* Define los parámetros para la subida
     const params = {
-      Bucket: bucketAWS,
-      Key: `${bucketFolderAWS}${fileName}`, // Ruta y nombre del archivo dentro del bucket
+      Bucket: bucket,
+      Key: `${bucketFolder}${fileName}`, // Ruta y nombre del archivo dentro del bucket
       Body: fileData,
-      ContentType: 'image/gif'
+      ContentType: contentType
     };
 
     //* Crea y envía el comando para subir el objeto
@@ -40,7 +53,7 @@ async function uploadGif(filePath) {
     if(data['$metadata']?.httpStatusCode === 200) {
       //* El comando PutObjectCommand no retorna directamente la URL del objeto
       //* Puedes construir la URL manualmente si tu bucket es público:
-      const url = `https://${bucketAWS}.s3.${regionAWS}.amazonaws.com/${params.Key}`;
+      const url = `https://${bucket}.s3.${region}.amazonaws.com/${bucketFolder}${fileName}`;
       console.log('data: ', {...data, fileName, url});
 
       //Eliminar el archivo
@@ -53,22 +66,23 @@ async function uploadGif(filePath) {
   }
 }
 
-async function uploadGifsFromFolder(folderPath) {
+async function uploadFilesFromFolder(folderPath, fileType) {
     try {
+        const { extension, contentType } = fileType;
         // Lee la lista de archivos en la carpeta
         const files = await fs.readdir(folderPath);
-        // Filtra únicamente los archivos que terminen en .gif (sin importar mayúsculas/minúsculas)
-        const gifFiles = files.filter(file => file.toLowerCase().endsWith('.gif'));
+        // Filtra únicamente los archivos que terminen con la extension especificada (sin importar mayúsculas/minúsculas)
+        const filterFiles = files.filter(file => file.toLowerCase().endsWith(extension));
 
-        if (gifFiles.length === 0) {
-            console.log('No se encontraron archivos GIF en la carpeta:', folderPath);
+        if (filterFiles.length === 0) {
+            console.log(`No se encontraron archivos de extensión ${extension} en la carpeta:`, folderPath);
             return;
         }
 
-        // Sube cada archivo GIF de forma secuencial
-        for (const file of gifFiles) {
+        // Sube cada archivo de forma secuencial
+        for (const file of filterFiles) {
             const fullPath = path.join(folderPath, file);
-            await uploadGif(fullPath);
+            await uploadFile(fullPath, contentType);
         }
     } catch (error) {
         console.error('Error al leer la carpeta:', error);
@@ -92,8 +106,8 @@ async function moveFile(filePath) {
 }
   
 // La ruta de la carpeta se puede pasar como argumento.
-const folderPath = process.argv[2] || './gifs';
-uploadGifsFromFolder(folderPath);
+const folderPath = process.argv[2] || './files';
+uploadFilesFromFolder(folderPath, fileTypes.gif);
 
 // const filePath = process.argv[2];
 // if (!filePath) {
@@ -101,4 +115,4 @@ uploadGifsFromFolder(folderPath);
 //   process.exit(1);
 // }
 
-// uploadGif(filePath);
+// uploadFile(filePath);
