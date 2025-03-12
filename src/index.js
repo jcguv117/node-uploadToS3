@@ -13,11 +13,13 @@ const config_aws = {
 const fileTypes = {
     svg: {
       contentType: 'image/svg+xml',
-      extension: '.svg'
+      extension: '.svg',
+      folderFile: ''
     },
     gif: {
       contentType: 'image/gif',
-      extension: '.gif'
+      extension: '.gif',
+      folderFile: 'GIFS/'
     }
 }
 
@@ -30,7 +32,7 @@ const s3 = new S3Client({
     }
 });
 
-async function uploadFile(filePath, contentType) {
+async function uploadFile(filePath, contentType, folderFile) {
   try {
     const {region, bucket, bucketFolder} = config_aws;
 
@@ -41,7 +43,7 @@ async function uploadFile(filePath, contentType) {
     //* Define los parámetros para la subida
     const params = {
       Bucket: bucket,
-      Key: `${bucketFolder}${fileName}`, // Ruta y nombre del archivo dentro del bucket
+      Key: `${bucketFolder}${folderFile}${fileName}`, // Ruta y nombre del archivo dentro del bucket
       Body: fileData,
       ContentType: contentType
     };
@@ -68,7 +70,7 @@ async function uploadFile(filePath, contentType) {
 
 async function uploadFilesFromFolder(folderPath, fileType) {
     try {
-        const { extension, contentType } = fileType;
+        const { extension, contentType, folderFile } = fileType;
         // Lee la lista de archivos en la carpeta
         const files = await fs.readdir(folderPath);
         // Filtra únicamente los archivos que terminen con la extension especificada (sin importar mayúsculas/minúsculas)
@@ -82,7 +84,7 @@ async function uploadFilesFromFolder(folderPath, fileType) {
         // Sube cada archivo de forma secuencial
         for (const file of filterFiles) {
             const fullPath = path.join(folderPath, file);
-            await uploadFile(fullPath, contentType);
+            await uploadFile(fullPath, contentType, folderFile);
         }
     } catch (error) {
         console.error('Error al leer la carpeta:', error);
@@ -107,7 +109,7 @@ async function moveFile(filePath) {
   
 // La ruta de la carpeta se puede pasar como argumento.
 const folderPath = process.argv[2] || './files';
-uploadFilesFromFolder(folderPath, fileTypes.gif);
+uploadFilesFromFolder(folderPath, fileTypes.svg);
 
 // const filePath = process.argv[2];
 // if (!filePath) {
