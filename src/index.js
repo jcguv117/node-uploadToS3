@@ -55,7 +55,7 @@ async function uploadFile(filePath, contentType, folderFile) {
     if(data['$metadata']?.httpStatusCode === 200) {
       //* El comando PutObjectCommand no retorna directamente la URL del objeto
       //* Puedes construir la URL manualmente si tu bucket es público:
-      const url = `https://${bucket}.s3.${region}.amazonaws.com/${bucketFolder}${fileName}`;
+      const url = `https://${bucket}.s3.${region}.amazonaws.com/${params.Key}`;
       console.log('data: ', {...data, fileName, url});
 
       //Eliminar el archivo
@@ -109,7 +109,7 @@ async function moveFile(filePath) {
   
 // La ruta de la carpeta se puede pasar como argumento.
 const folderPath = process.argv[2] || './files';
-uploadFilesFromFolder(folderPath, fileTypes.svg);
+uploadFilesFromFolder(folderPath, fileTypes.gif);
 
 // const filePath = process.argv[2];
 // if (!filePath) {
