@@ -1,7 +1,8 @@
 const fs = require('fs').promises;
 const path = require('path');
 require('dotenv').config();
-const { S3Client, PutObjectCommand, ListObjectsV2Command } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, ListObjectsV2Command, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 const config_aws = {
     keyId        : process.env.AWS_ACCESS_KEY_ID,
@@ -14,6 +15,11 @@ const fileTypes = {
     svg: {
       contentType: 'image/svg+xml',
       extension: '.svg',
+      folderFile: ''
+    },
+    jpg: {
+      contentType: 'image/jpeg',
+      extension: '.jpg',
       folderFile: ''
     },
     gif: {
@@ -134,13 +140,38 @@ async function listFilesInBucket(folderPath) {
   }
 }
 
+async function getSignedImageUrl(key, expirationInSeconds = 3600) {  // Expira en 1 hora (3600 segundos)
+  try {
+    const { bucket } = config_aws;
+
+    // Define los parámetros para obtener la URL firmada
+    const params = {
+      Bucket: bucket,
+      Key: key, // La clave (ruta) del objeto en el bucket
+    };
+
+    // Crea el comando GetObjectCommand
+    const command = new GetObjectCommand(params);
+
+    // Genera la URL pre-firmada
+    const signedUrl = await getSignedUrl(s3, command, { expiresIn: expirationInSeconds });
+
+    console.log('URL firmada generada:', signedUrl);
+    return signedUrl;
+
+  } catch (error) {
+    console.error('Error al generar la URL firmada:', error);
+    return null;
+  }
+}
+
 // La ruta de la carpeta se puede pasar como argumento.
-const folderPath = process.argv[2] || './files';
-uploadFilesFromFolder(folderPath, fileTypes.gif);
+// const folderPath = process.argv[2] || './files';
+// uploadFilesFromFolder(folderPath, fileTypes.jpg);
 
 // Ejemplo de uso
-// const bucketFolderPath = config_aws.bucketFolder;
-// listFilesInBucket(bucketFolderPath);
+const bucketFolderPath = config_aws.bucketFolder;
+listFilesInBucket(bucketFolderPath);
 
 // const filePath = process.argv[2];
 // if (!filePath) {
@@ -149,3 +180,7 @@ uploadFilesFromFolder(folderPath, fileTypes.gif);
 // }
 
 // uploadFile(filePath);
+
+// Ejemplo de cómo obtener la URL firmada para una imagen.
+const pathImage = 'question-mark-icon.jpg'
+getSignedImageUrl(pathImage);
