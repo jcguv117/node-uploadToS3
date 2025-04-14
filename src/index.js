@@ -1,7 +1,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 require('dotenv').config();
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, ListObjectsV2Command } = require('@aws-sdk/client-s3');
 
 const config_aws = {
     keyId        : process.env.AWS_ACCESS_KEY_ID,
@@ -106,10 +106,41 @@ async function moveFile(filePath) {
     console.error('Error al mover el archivo:', error);
   }
 }
-  
+
+async function listFilesInBucket(folderPath) {
+  try {
+    const { bucket } = config_aws;
+
+    //* Define los parámetros para listar los objetos
+    const params = {
+      Bucket: bucket,
+      Prefix: folderPath, // Ruta dentro del bucket
+    };
+
+    //* Crea y envía el comando para listar los objetos
+    const command = new ListObjectsV2Command(params);
+    const data = await s3.send(command);
+
+    if (data.Contents) {
+      console.log('Archivos encontrados:');
+      data.Contents.forEach((file) => {
+        console.log(file.Key); // Muestra la ruta completa del archivo
+      });
+    } else {
+      console.log('No se encontraron archivos en la ruta especificada.');
+    }
+  } catch (error) {
+    console.error('Error al listar los archivos del bucket:', error);
+  }
+}
+
 // La ruta de la carpeta se puede pasar como argumento.
 const folderPath = process.argv[2] || './files';
 uploadFilesFromFolder(folderPath, fileTypes.gif);
+
+// Ejemplo de uso
+// const bucketFolderPath = config_aws.bucketFolder;
+// listFilesInBucket(bucketFolderPath);
 
 // const filePath = process.argv[2];
 // if (!filePath) {
